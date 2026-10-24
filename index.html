@@ -1,0 +1,358 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <title>StarWay - Push-To Telescopio</title>
+
+  <!-- PWA & iOS Safari Meta Tags -->
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="StarWay">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="theme-color" content="#0d0202">
+  <meta name="description" content="PWA Mobile-first per puntamento assistito Push-To di telescopi astronomici con calibrazione ad 1 stella e sensori HTML5">
+
+  <link rel="apple-touch-icon" href="icons/icon-192.png">
+  <link rel="manifest" href="manifest.json">
+  <link rel="icon" type="image/png" href="icons/icon-192.png">
+
+  <!-- Fogli di stile -->
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+<body class="theme-night">
+  <div id="app-root">
+
+    <!-- Top Status Bar & Quick Actions -->
+    <header class="app-header">
+      <div class="header-brand">
+        <span class="brand-icon">🔭</span>
+        <span class="brand-title">StarWay</span>
+      </div>
+
+      <div class="header-status-group">
+        <span id="status-gps" class="status-pill status-warn">GPS: Attesa</span>
+        <span id="status-sensors" class="status-pill status-warn">Sensori: Standby</span>
+        <span id="status-calib" class="status-pill status-warn">Non Allineato</span>
+      </div>
+
+      <div class="header-actions">
+        <button id="btn-toggle-mute" class="icon-btn" title="Audio Guida">🔊</button>
+        <button id="btn-toggle-theme" class="icon-btn" title="Cambia Tema">🌙</button>
+      </div>
+    </header>
+
+    <!-- iOS Sensor Permission Required Banner -->
+    <div id="permission-banner" class="permission-banner" style="display: none;">
+      <div class="permission-content">
+        <div class="permission-icon">📱</div>
+        <div class="permission-text">
+          <strong>Sensori di Movimento Richiesti</strong>
+          <span>Su iOS Safari è necessario autorizzare l'accesso a bussola e giroscopio.</span>
+        </div>
+      </div>
+      <button id="btn-request-sensor" class="btn-primary-glow">Autorizza Giroscopio</button>
+    </div>
+
+    <!-- MAIN VIEWS CONTAINER -->
+    <main class="main-content">
+
+      <!-- ================= 1. TAB HUD / PUSH-TO VIEW ================= -->
+      <section id="tab-hud" class="tab-view active">
+        <!-- Scheda Target Attuale -->
+        <div class="target-card">
+          <div class="target-card-top">
+            <div>
+              <div class="target-name" id="hud-target-name">Stella Polare</div>
+              <div class="target-sub">
+                <span id="hud-target-desig">Alpha UMi</span> • 
+                <span id="hud-target-const">Orsa Minore</span> • 
+                <span id="hud-target-mag">Mag: 2.0</span>
+              </div>
+            </div>
+            <button class="btn-subtle" onclick="starWayApp.switchTab('catalog')">Cambia 🔍</button>
+          </div>
+          <div class="target-card-coords">
+            <div><small>Astro Target:</small> <span id="hud-target-coords">Alt: +45° 00' | Az: 000° 30'</span></div>
+            <div><small>Telescopio:</small> <span id="hud-scope-coords">Alt: +00° 00' | Az: 000° 00'</span></div>
+          </div>
+        </div>
+
+        <!-- Area Mirino Radar Push-To con Frecce Guida -->
+        <div class="reticle-stage">
+          <!-- Freccia SU -->
+          <div id="arrow-up" class="nav-arrow nav-arrow-up">
+            <span class="arrow-glyph">▲</span>
+            <span class="arrow-label">ALZA</span>
+          </div>
+
+          <!-- Freccia SINISTRA -->
+          <div id="arrow-left" class="nav-arrow nav-arrow-left">
+            <span class="arrow-glyph">◀</span>
+            <span class="arrow-label">RUOTA SX</span>
+          </div>
+
+          <!-- Canvas Grafico Mirino -->
+          <div class="reticle-canvas-wrap">
+            <canvas id="reticle-canvas"></canvas>
+            <div id="target-lock-badge" class="target-lock-badge">
+              🎯 BERSAGLIO CENTRATO
+            </div>
+          </div>
+
+          <!-- Freccia DESTRA -->
+          <div id="arrow-right" class="nav-arrow nav-arrow-right">
+            <span class="arrow-glyph">▶</span>
+            <span class="arrow-label">RUOTA DX</span>
+          </div>
+
+          <!-- Freccia GIÙ -->
+          <div id="arrow-down" class="nav-arrow nav-arrow-down">
+            <span class="arrow-glyph">▼</span>
+            <span class="arrow-label">ABBASSA</span>
+          </div>
+        </div>
+
+        <!-- Indicatori Digitali Delta Push-To -->
+        <div class="delta-panel">
+          <div class="delta-box">
+            <span class="delta-label">Δ ALTITUDINE</span>
+            <span id="hud-delta-alt" class="delta-value">+00° 00'</span>
+          </div>
+          <div class="delta-box delta-box-dist">
+            <span class="delta-label">DISTANZA</span>
+            <span id="hud-distance" class="delta-value-sub">00° 00'</span>
+          </div>
+          <div class="delta-box">
+            <span class="delta-label">Δ AZIMUT</span>
+            <span id="hud-delta-az" class="delta-value">+00° 00'</span>
+          </div>
+        </div>
+
+        <!-- Barra Rapida Azioni HUD -->
+        <div class="hud-quick-actions">
+          <button class="btn-action" onclick="starWayApp.switchTab('calibration')">
+            ⭐ Calibra Qui
+          </button>
+          <button class="btn-action" onclick="starWayApp.switchTab('catalog')">
+            🌌 Sfoglia Catalogo
+          </button>
+        </div>
+      </section>
+
+      <!-- ================= 2. TAB CATALOGO ================= -->
+      <section id="tab-catalog" class="tab-view">
+        <div class="catalog-header">
+          <div class="search-input-wrap">
+            <span class="search-icon">🔍</span>
+            <input type="text" id="catalog-search-input" placeholder="Cerca: M42, Polaris, Saturno, NGC...">
+          </div>
+
+          <div class="filter-pills-scroll">
+            <button class="filter-pill active" data-filter="all">Tutti</button>
+            <button class="filter-pill" data-filter="visible">Visibili Ora (Alt > 0°)</button>
+            <button class="filter-pill" data-filter="popular">I più Amati</button>
+            <button class="filter-pill" data-filter="calibration">Stelle Calibrazione</button>
+            <button class="filter-pill" data-filter="deepsky">Deep Sky (M / NGC)</button>
+          </div>
+        </div>
+
+        <div id="catalog-items-container" class="catalog-items-container">
+          <!-- Generato dinamicamente via JS -->
+        </div>
+      </section>
+
+      <!-- ================= 3. TAB CALIBRAZIONE CELESTE ================= -->
+      <section id="tab-calibration" class="tab-view">
+        <div class="calibration-view-wrap">
+          <div class="section-title-wrap">
+            <h2>Allineamento ad 1 Astro (1-Star Alignment)</h2>
+            <p>Compensa le anomalie magnetiche, il posizionamento del supporto e garantisce una precisione millimetrica nel Push-To.</p>
+          </div>
+
+          <!-- Guida Procedura -->
+          <div class="guide-steps-card">
+            <div class="step-row">
+              <span class="step-num">1</span>
+              <span>Scegli una stella ben nota (es. la <strong>Stella Polare</strong> o una brillante).</span>
+            </div>
+            <div class="step-row">
+              <span class="step-num">2</span>
+              <span>Punta manualmente il telescopio fino a <strong>centrare l'astro nell'oculare</strong>.</span>
+            </div>
+            <div class="step-row">
+              <span class="step-num">3</span>
+              <span>Tocca il pulsante verde <strong>"Conferma Allineamento"</strong> qui sotto.</span>
+            </div>
+          </div>
+
+          <!-- Selezione Rapida Stella di Riferimento -->
+          <div class="quick-calib-section">
+            <label class="form-label">Astri Consigliati per Calibrazione:</label>
+            <div id="quick-calib-container" class="quick-calib-container">
+              <!-- Pillole generate via JS con Stella Polare evidenziata -->
+            </div>
+          </div>
+
+          <!-- Quadro Dati di Calibrazione -->
+          <div class="calibration-telemetry-card">
+            <div class="calib-data-row">
+              <span>Astro Selezionato:</span>
+              <strong id="calib-star-name">Stella Polare</strong>
+            </div>
+            <div class="calib-data-row">
+              <span>Coordinate Teoriche Esatte:</span>
+              <span id="calib-star-coords">Alt: +45° 00' | Az: 000° 30'</span>
+            </div>
+            <div class="calib-data-row">
+              <span>Lettura Sensore Grezza Telefono:</span>
+              <span id="calib-raw-coords">Alt: +00° 00' | Az: 000° 00'</span>
+            </div>
+            <div class="calib-data-row">
+              <span>Offset Attualmente Applicato:</span>
+              <strong id="calib-current-offset">Nessun offset (Grezzo)</strong>
+            </div>
+            <div id="calib-status-text" class="calib-status-text">
+              ⚠️ Telescopio non calibrato.
+            </div>
+          </div>
+
+          <!-- Pulsantone di Conferma -->
+          <button id="btn-confirm-calibration" class="btn-primary-large">
+            🎯 CONFERMA ALLINEAMENTO ADESSO
+          </button>
+
+          <button id="btn-reset-calibration" class="btn-subtle btn-block">
+            ↺ Azzera Calibrazione
+          </button>
+        </div>
+      </section>
+
+      <!-- ================= 4. TAB IMPOSTAZIONI ================= -->
+      <section id="tab-settings" class="tab-view">
+        <div class="settings-view-wrap">
+          <div class="section-title-wrap">
+            <h2>Impostazioni & Montaggio</h2>
+            <p>Configura il posizionamento dello smartphone sul tubo ottico e i parametri dei sensori.</p>
+          </div>
+
+          <!-- 1. Selettore Montaggio Telefono -->
+          <div class="settings-card">
+            <h3>📱 Montaggio Smartphone sul Telescopio</h3>
+            <p class="settings-help">
+              Seleziona come il telefono è fisicamente bloccato sul tubo del telescopio. L'app adatta le matrici vettoriali 3D per far coincidere il mirino con l'asse ottico.
+            </p>
+
+            <div class="form-group">
+              <label for="settings-mount-select" class="form-label">Modalità di Fissaggio:</label>
+              <select id="settings-mount-select" class="form-select">
+                <option value="PARALLEL_TOP">1. Posizione PARALLELA (Top / Asse +Y avanti)</option>
+                <option value="PERP_RIGHT">2. Posizione PERPENDICOLARE (Lato Destro +X avanti)</option>
+                <option value="PERP_LEFT">3. Posizione PERPENDICOLARE (Lato Sinistro -X avanti)</option>
+                <option value="CAMERA_BACK">4. Fotocamera Posteriore (-Z verso l'asse ottico)</option>
+              </select>
+            </div>
+
+            <div class="mount-mode-diagram">
+              <div class="diagram-note">
+                💡 <strong>Consiglio per Dobson:</strong> Se usi un clamp laterale, scegli <em>Posizione Perpendicolare</em> per leggere comodamente lo schermo mentre stai in piedi accanto all'oculare.
+              </div>
+            </div>
+          </div>
+
+          <!-- 2. Parametri Push-To -->
+          <div class="settings-card">
+            <h3>🎯 Parametri di Puntamento Push-To</h3>
+
+            <div class="form-group">
+              <label for="settings-tolerance-select" class="form-label">Tolleranza Centratura Mirino:</label>
+              <select id="settings-tolerance-select" class="form-select">
+                <option value="0.25">Alta Precisione (± 0.25° - per forti ingrandimenti)</option>
+                <option value="0.5" selected>Standard (± 0.50° - diametro Luna Piena)</option>
+                <option value="1.0">Ampia (± 1.00° - per oculari a largo campo)</option>
+              </select>
+            </div>
+
+            <div class="form-group">
+              <label for="settings-smoothing-slider" class="form-label">
+                Filtro Fluidità Movimento: <span id="settings-smoothing-val">0.35</span>
+              </label>
+              <input type="range" id="settings-smoothing-slider" min="0.10" max="0.80" step="0.05" value="0.35" class="form-range">
+              <div class="range-labels">
+                <span>Molto Fluido (smorzato)</span>
+                <span>Reattivo (istantaneo)</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- 3. Coordinate GPS e Osservatore -->
+          <div class="settings-card">
+            <h3>📍 Coordinate Geografiche Osservatore</h3>
+            <p class="settings-help">Rilevate automaticamente via GPS HTML5 ad alta precisione.</p>
+            <div id="gps-location-label" class="gps-readout">Rilevamento in corso...</div>
+
+            <div class="coords-manual-grid">
+              <div class="form-group">
+                <label for="settings-lat" class="form-label">Latitudine (°):</label>
+                <input type="number" id="settings-lat" step="0.0001" class="form-input" placeholder="41.9028">
+              </div>
+              <div class="form-group">
+                <label for="settings-lon" class="form-label">Longitudine (°):</label>
+                <input type="number" id="settings-lon" step="0.0001" class="form-input" placeholder="12.4964">
+              </div>
+            </div>
+
+            <button id="btn-save-location" class="btn-subtle btn-block">Salva Coordinate Manuali</button>
+          </div>
+
+          <!-- 4. Istruzioni iOS PWA -->
+          <div class="settings-card">
+            <h3>📲 Installazione PWA su iPhone (iOS Safari)</h3>
+            <ol class="ios-install-steps">
+              <li>Apri questa pagina in <strong>Safari</strong> sul tuo iPhone.</li>
+              <li>Tocca l'icona <strong>Condividi</strong> (il quadratino con la freccia verso l'alto in basso al centro).</li>
+              <li>Scorri il menu e tocca <strong>"Aggiungi alla schermata Home"</strong>.</li>
+              <li>Tocca <strong>"Aggiungi"</strong> in alto a destra.</li>
+              <li>Avvia l'app toccando l'icona <strong>StarWay</strong> sulla schermata Home: si aprirà a schermo intero senza barre del browser!</li>
+            </ol>
+          </div>
+        </div>
+      </section>
+
+    </main>
+
+    <!-- BOTTOM TAB NAVIGATION BAR -->
+    <nav class="nav-bar">
+      <button class="nav-btn active" data-tab="hud">
+        <span class="nav-icon">🔭</span>
+        <span class="nav-text">Mirino</span>
+      </button>
+
+      <button class="nav-btn" data-tab="catalog">
+        <span class="nav-icon">🌌</span>
+        <span class="nav-text">Catalogo</span>
+      </button>
+
+      <button class="nav-btn" data-tab="calibration">
+        <span class="nav-icon">⭐</span>
+        <span class="nav-text">Allinea</span>
+      </button>
+
+      <button class="nav-btn" data-tab="settings">
+        <span class="nav-icon">⚙️</span>
+        <span class="nav-text">Opzioni</span>
+      </button>
+    </nav>
+
+  </div>
+
+  <!-- SCRIPTS MODULARI (Ordine di caricamento) -->
+  <script src="js/astronomy.browser.min.js"></script>
+  <script src="js/catalog.js"></script>
+  <script src="js/sensors.js"></script>
+  <script src="js/calibration.js"></script>
+  <script src="js/audio.js"></script>
+  <script src="js/render-reticle.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
