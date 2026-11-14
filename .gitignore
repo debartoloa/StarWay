@@ -1,0 +1,18 @@
+# Sistema operativo & IDE
+.DS_Store
+Thumbs.db
+desktop.ini
+*.swp
+*.swo
+.vscode/
+.idea/
+
+# Log e file temporanei
+*.log
+*.tmp
+*.bak
+
+# Dipendenze locali opzionali / cache
+node_modules/
+.env
+.env.local
