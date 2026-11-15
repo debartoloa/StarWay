@@ -15,6 +15,16 @@ class StarWayApp {
     this.wakeLockVideo = null;
     this.isWakeLockActive = false;
 
+    // Stato editor Tour Celesti
+    this.tourEditorState = {
+      id: null,
+      name: '',
+      dateStr: new Date().toISOString().slice(0, 10),
+      slotStartHour: 21,
+      orderMode: 'smart',
+      itemIds: []
+    };
+
     // Elementi DOM memorizzati
     this.dom = {};
 
@@ -126,7 +136,53 @@ class StarWayApp {
       manualLatInput: document.getElementById('settings-lat'),
       manualLonInput: document.getElementById('settings-lon'),
       btnSaveLocation: document.getElementById('btn-save-location'),
-      gpsLocationLabel: document.getElementById('gps-location-label')
+      gpsLocationLabel: document.getElementById('gps-location-label'),
+
+      // Tour Celesti & Banner HUD
+      hudTourBanner: document.getElementById('hud-tour-banner'),
+      hudTourStepLabel: document.getElementById('hud-tour-step-label'),
+      hudTourNameLabel: document.getElementById('hud-tour-name-label'),
+      btnHudTourBack: document.getElementById('btn-hud-tour-back'),
+      btnHudTourNext: document.getElementById('btn-hud-tour-next'),
+
+      toursViewList: document.getElementById('tours-view-list'),
+      toursViewEditor: document.getElementById('tours-view-editor'),
+      toursViewRunner: document.getElementById('tours-view-runner'),
+      toursListContainer: document.getElementById('tours-list-container'),
+      btnNewTour: document.getElementById('btn-new-tour'),
+
+      tourEditorTitle: document.getElementById('tour-editor-title'),
+      btnCancelTourEdit: document.getElementById('btn-cancel-tour-edit'),
+      tourInputName: document.getElementById('tour-input-name'),
+      tourInputDate: document.getElementById('tour-input-date'),
+      tourInputSlot: document.getElementById('tour-input-slot'),
+      tourOrderButtons: document.querySelectorAll('.order-mode-btn'),
+      tourCatalogSearch: document.getElementById('tour-catalog-search'),
+      tourCatalogPicker: document.getElementById('tour-catalog-picker'),
+      tourSelectedCount: document.getElementById('tour-selected-count'),
+      tourOrderBadge: document.getElementById('tour-order-badge'),
+      tourSelectedItems: document.getElementById('tour-selected-items'),
+      btnSaveTour: document.getElementById('btn-save-tour'),
+
+      runnerTourTitle: document.getElementById('runner-tour-title'),
+      btnExitTourRunner: document.getElementById('btn-exit-tour-runner'),
+      toursAlignmentGate: document.getElementById('tours-alignment-gate'),
+      runnerCalibStatusBox: document.getElementById('runner-calib-status-box'),
+      btnRunnerGoCalib: document.getElementById('btn-runner-go-calib'),
+      btnRunnerConfirmAlign: document.getElementById('btn-runner-confirm-align'),
+      toursRunnerStage: document.getElementById('tours-runner-stage'),
+      runnerStepCounter: document.getElementById('runner-step-counter'),
+      runnerSlotBadge: document.getElementById('runner-slot-badge'),
+      runnerProgressFill: document.getElementById('runner-progress-fill'),
+      runnerObjName: document.getElementById('runner-obj-name'),
+      runnerObjSub: document.getElementById('runner-obj-sub'),
+      runnerObjStatusBadge: document.getElementById('runner-obj-status-badge'),
+      runnerObjAltAz: document.getElementById('runner-obj-altaz'),
+      runnerObjDist: document.getElementById('runner-obj-dist'),
+      runnerObjAdvice: document.getElementById('runner-obj-advice'),
+      btnRunnerOpenHud: document.getElementById('btn-runner-open-hud'),
+      btnRunnerPrev: document.getElementById('btn-runner-prev'),
+      btnRunnerNext: document.getElementById('btn-runner-next')
     };
   }
 
@@ -326,6 +382,120 @@ class StarWayApp {
         }
       });
     }
+
+    this.bindTourEvents();
+  }
+
+  bindTourEvents() {
+    if (this.dom.btnNewTour) {
+      this.dom.btnNewTour.addEventListener('click', () => this.openTourEditor(null));
+    }
+
+    if (this.dom.btnCancelTourEdit) {
+      this.dom.btnCancelTourEdit.addEventListener('click', () => {
+        this.switchTourSubview('list');
+        this.renderToursList();
+      });
+    }
+
+    if (this.dom.tourInputName) {
+      this.dom.tourInputName.addEventListener('input', (e) => {
+        this.tourEditorState.name = e.target.value;
+      });
+    }
+
+    if (this.dom.tourInputDate) {
+      this.dom.tourInputDate.addEventListener('change', (e) => {
+        this.tourEditorState.dateStr = e.target.value || new Date().toISOString().slice(0, 10);
+        this.renderTourCatalogPicker();
+        this.renderTourEditorSelectedItems();
+      });
+    }
+
+    if (this.dom.tourInputSlot) {
+      this.dom.tourInputSlot.addEventListener('change', (e) => {
+        this.tourEditorState.slotStartHour = parseInt(e.target.value, 10);
+        this.renderTourCatalogPicker();
+        this.renderTourEditorSelectedItems();
+      });
+    }
+
+    this.dom.tourOrderButtons.forEach(btn => {
+      btn.addEventListener('click', () => {
+        const mode = btn.getAttribute('data-order-mode');
+        this.tourEditorState.orderMode = mode;
+        this.dom.tourOrderButtons.forEach(b => b.classList.toggle('active', b === btn));
+        this.renderTourEditorSelectedItems();
+      });
+    });
+
+    if (this.dom.tourCatalogSearch) {
+      this.dom.tourCatalogSearch.addEventListener('input', () => this.renderTourCatalogPicker());
+    }
+
+    if (this.dom.btnSaveTour) {
+      this.dom.btnSaveTour.addEventListener('click', () => this.handleSaveTour());
+    }
+
+    // Runner & Banner HUD
+    if (this.dom.btnExitTourRunner) {
+      this.dom.btnExitTourRunner.addEventListener('click', () => {
+        if (window.tourPlannerManager) window.tourPlannerManager.stopRunner();
+        this.updateHudTourBanner();
+        this.switchTourSubview('list');
+        this.renderToursList();
+      });
+    }
+
+    if (this.dom.btnRunnerGoCalib) {
+      this.dom.btnRunnerGoCalib.addEventListener('click', () => {
+        this.switchTab('calibration');
+      });
+    }
+
+    if (this.dom.btnRunnerConfirmAlign) {
+      this.dom.btnRunnerConfirmAlign.addEventListener('click', () => {
+        if (!window.tourPlannerManager?.activeRunner) return;
+        if (window.calibrationManager && !window.calibrationManager.isCalibrated) {
+          const proceed = confirm(
+            'Il telescopio non risulta ancora calibrato in questa sessione.\n\nVuoi comunque avviare il tour (o preferisci andare prima su Allinea)?'
+          );
+          if (!proceed) return;
+        }
+        window.tourPlannerManager.activeRunner.alignmentConfirmed = true;
+        this.renderTourRunner();
+      });
+    }
+
+    if (this.dom.btnRunnerOpenHud) {
+      this.dom.btnRunnerOpenHud.addEventListener('click', () => {
+        const runner = window.tourPlannerManager?.activeRunner;
+        if (!runner || !runner.items[runner.currentIndex]) return;
+        this.setTarget(runner.items[runner.currentIndex].item);
+        this.updateHudTourBanner();
+        this.switchTab('hud');
+      });
+    }
+
+    if (this.dom.btnRunnerPrev) {
+      this.dom.btnRunnerPrev.addEventListener('click', () => this.advanceTourRunner(-1));
+    }
+
+    if (this.dom.btnRunnerNext) {
+      this.dom.btnRunnerNext.addEventListener('click', () => this.advanceTourRunner(1));
+    }
+
+    if (this.dom.btnHudTourBack) {
+      this.dom.btnHudTourBack.addEventListener('click', () => {
+        this.switchTab('tours');
+      });
+    }
+
+    if (this.dom.btnHudTourNext) {
+      this.dom.btnHudTourNext.addEventListener('click', () => {
+        this.advanceTourRunner(1, true);
+      });
+    }
   }
 
   switchTab(tabId) {
@@ -341,8 +511,17 @@ class StarWayApp {
 
     if (tabId === 'hud' && this.reticleRenderer) {
       this.reticleRenderer.resizeCanvas();
+      this.updateHudTourBanner();
     } else if (tabId === 'catalog') {
       this.renderCatalogList();
+    } else if (tabId === 'tours') {
+      if (window.tourPlannerManager?.activeRunner) {
+        this.switchTourSubview('runner');
+        this.renderTourRunner();
+      } else if (!this.dom.toursViewEditor?.classList.contains('active')) {
+        this.switchTourSubview('list');
+        this.renderToursList();
+      }
     } else if (tabId === 'calibration') {
       if (this.skyMapRenderer) {
         this.skyMapRenderer.resizeCanvas();
@@ -542,6 +721,8 @@ class StarWayApp {
       if (this.skyMapRenderer) {
         this.skyMapRenderer.render(this.currentTarget, this.currentTheme);
       }
+    } else if (this.activeTab === 'tours') {
+      this.updateRunnerLiveTelemetry(raw);
     }
   }
 
@@ -792,6 +973,433 @@ class StarWayApp {
       this.switchTab('hud');
     } else {
       alert('Errore allineamento: ' + (res.error || 'Dati sensore non disponibili.'));
+    }
+  }
+
+  /**
+   * ================= PIANIFICATORE TOUR CELESTI =================
+   */
+  switchTourSubview(view) {
+    if (this.dom.toursViewList) this.dom.toursViewList.classList.toggle('active', view === 'list');
+    if (this.dom.toursViewEditor) this.dom.toursViewEditor.classList.toggle('active', view === 'editor');
+    if (this.dom.toursViewRunner) this.dom.toursViewRunner.classList.toggle('active', view === 'runner');
+  }
+
+  renderToursList() {
+    if (!this.dom.toursListContainer || !window.tourPlannerManager) return;
+    const tours = window.tourPlannerManager.getAllTours();
+
+    if (tours.length === 0) {
+      this.dom.toursListContainer.innerHTML = `
+        <div class="empty-state">
+          <p>🗺️ Nessun tour pianificato.<br><br>Tocca <strong>"+ Nuova Pianificazione"</strong> per creare la tua prima sessione osservativa di 3 ore!</p>
+        </div>
+      `;
+      return;
+    }
+
+    this.dom.toursListContainer.innerHTML = tours.map(tour => {
+      const dateLabel = window.tourPlannerManager.formatDateLabel(tour.dateStr);
+      const slotLabel = window.tourPlannerManager.formatSlotLabel(tour.slotStartHour, 3);
+      const orderLabel = tour.orderMode === 'smart' ? '🧠 Smart' : '✋ Manuale';
+      const count = tour.itemIds ? tour.itemIds.length : 0;
+
+      return `
+        <div class="tour-card">
+          <div class="tour-card-top">
+            <div>
+              <div class="tour-card-title">${tour.name}</div>
+              <div class="tour-card-meta">
+                <span>📅 ${dateLabel}</span>
+                <span>🕒 ${slotLabel} (3h)</span>
+              </div>
+            </div>
+            <div class="catalog-badges">
+              <span class="badge badge-visible">${count} oggett${count === 1 ? 'o' : 'i'}</span>
+              <span class="badge badge-type">${orderLabel}</span>
+            </div>
+          </div>
+          <div class="tour-card-actions">
+            <button type="button" class="btn-tour-start" data-tour-start="${tour.id}">▶ Inizia il Tour</button>
+            <button type="button" class="btn-subtle" data-tour-edit="${tour.id}">✏️ Modifica</button>
+            <button type="button" class="btn-subtle" data-tour-delete="${tour.id}">🗑️</button>
+          </div>
+        </div>
+      `;
+    }).join('');
+
+    this.dom.toursListContainer.querySelectorAll('[data-tour-start]').forEach(btn => {
+      btn.addEventListener('click', () => this.startTourRunner(btn.getAttribute('data-tour-start')));
+    });
+
+    this.dom.toursListContainer.querySelectorAll('[data-tour-edit]').forEach(btn => {
+      btn.addEventListener('click', () => this.openTourEditor(btn.getAttribute('data-tour-edit')));
+    });
+
+    this.dom.toursListContainer.querySelectorAll('[data-tour-delete]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const id = btn.getAttribute('data-tour-delete');
+        if (confirm('Vuoi eliminare questa pianificazione?')) {
+          window.tourPlannerManager.deleteTour(id);
+          this.renderToursList();
+        }
+      });
+    });
+  }
+
+  openTourEditor(tourId = null) {
+    const existing = tourId && window.tourPlannerManager
+      ? window.tourPlannerManager.getTourById(tourId)
+      : null;
+
+    if (existing) {
+      this.tourEditorState = {
+        id: existing.id,
+        name: existing.name,
+        dateStr: existing.dateStr,
+        slotStartHour: existing.slotStartHour,
+        orderMode: existing.orderMode || 'smart',
+        itemIds: [...(existing.itemIds || [])]
+      };
+      if (this.dom.tourEditorTitle) this.dom.tourEditorTitle.textContent = 'Modifica Tour Celeste';
+    } else {
+      const todayStr = new Date().toISOString().slice(0, 10);
+      this.tourEditorState = {
+        id: null,
+        name: '',
+        dateStr: todayStr,
+        slotStartHour: 21,
+        orderMode: 'smart',
+        itemIds: []
+      };
+      if (this.dom.tourEditorTitle) this.dom.tourEditorTitle.textContent = 'Nuova Sessione di Osservazione';
+    }
+
+    if (this.dom.tourInputName) this.dom.tourInputName.value = this.tourEditorState.name;
+    if (this.dom.tourInputDate) this.dom.tourInputDate.value = this.tourEditorState.dateStr;
+    if (this.dom.tourInputSlot) this.dom.tourInputSlot.value = String(this.tourEditorState.slotStartHour);
+    if (this.dom.tourCatalogSearch) this.dom.tourCatalogSearch.value = '';
+
+    this.dom.tourOrderButtons.forEach(btn => {
+      btn.classList.toggle('active', btn.getAttribute('data-order-mode') === this.tourEditorState.orderMode);
+    });
+
+    this.switchTourSubview('editor');
+    this.renderTourCatalogPicker();
+    this.renderTourEditorSelectedItems();
+  }
+
+  renderTourCatalogPicker() {
+    if (!this.dom.tourCatalogPicker || !window.celestialManager || !window.tourPlannerManager) return;
+
+    const query = (this.dom.tourCatalogSearch?.value || '').trim().toLowerCase();
+    const { dateStr, slotStartHour, itemIds } = this.tourEditorState;
+
+    const matches = window.celestialManager.catalog.filter(item => {
+      if (!query) return item.popular || item.isSolarSystem;
+      return (
+        item.name.toLowerCase().includes(query) ||
+        item.designation.toLowerCase().includes(query) ||
+        item.constellation.toLowerCase().includes(query) ||
+        item.type.toLowerCase().includes(query) ||
+        item.id.toLowerCase().includes(query)
+      );
+    }).slice(0, 20);
+
+    if (matches.length === 0) {
+      this.dom.tourCatalogPicker.innerHTML = `<div class="empty-state" style="padding:14px;">Nessun oggetto trovato.</div>`;
+      return;
+    }
+
+    this.dom.tourCatalogPicker.innerHTML = matches.map(item => {
+      const isAdded = itemIds.includes(item.id);
+      const analysis = window.tourPlannerManager.analyzeObjectForSlot(item, dateStr, slotStartHour, 3);
+      return `
+        <div class="tour-picker-row">
+          <div class="tour-picker-info">
+            <strong>${item.name} <small style="color:var(--text-dim);">(Mag ${typeof item.mag === 'number' ? item.mag.toFixed(1) : '-'})</small></strong>
+            <span>${analysis.statusLabel}</span>
+          </div>
+          <button type="button" class="btn-picker-add ${isAdded ? 'added' : ''}" data-pick-id="${item.id}" ${isAdded ? 'disabled' : ''}>
+            ${isAdded ? '✓ Aggiunto' : '+ Aggiungi'}
+          </button>
+        </div>
+      `;
+    }).join('');
+
+    this.dom.tourCatalogPicker.querySelectorAll('[data-pick-id]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const id = btn.getAttribute('data-pick-id');
+        if (!this.tourEditorState.itemIds.includes(id)) {
+          this.tourEditorState.itemIds.push(id);
+          this.renderTourCatalogPicker();
+          this.renderTourEditorSelectedItems();
+        }
+      });
+    });
+  }
+
+  renderTourEditorSelectedItems() {
+    if (!this.dom.tourSelectedItems || !window.tourPlannerManager) return;
+
+    const { itemIds, dateStr, slotStartHour, orderMode } = this.tourEditorState;
+    if (this.dom.tourSelectedCount) this.dom.tourSelectedCount.textContent = String(itemIds.length);
+    if (this.dom.tourOrderBadge) {
+      this.dom.tourOrderBadge.textContent = orderMode === 'smart'
+        ? '🧠 Ordine Smart (Tramonto prima)'
+        : '✋ Ordine Personalizzato';
+    }
+
+    if (itemIds.length === 0) {
+      this.dom.tourSelectedItems.innerHTML = `
+        <div class="empty-state" style="padding:16px;">
+          Aggiungi almeno un oggetto celeste dalla lista sopra per ricevere l'analisi di visibilità e i consigli osservativi.
+        </div>
+      `;
+      return;
+    }
+
+    const ordered = window.tourPlannerManager.getOrderedItemsWithAnalysis(
+      itemIds,
+      dateStr,
+      slotStartHour,
+      orderMode
+    );
+
+    this.dom.tourSelectedItems.innerHTML = ordered.map((entry, idx) => {
+      const badgeClass = entry.statusLevel === 'ok'
+        ? 'badge-visible'
+        : (entry.statusLevel === 'warn' ? 'badge-warn-slot' : 'badge-hidden');
+
+      const manualControls = orderMode === 'custom' ? `
+        <button type="button" class="btn-mini-ctrl" data-move-up="${entry.item.id}" ${idx === 0 ? 'disabled' : ''}>▲</button>
+        <button type="button" class="btn-mini-ctrl" data-move-down="${entry.item.id}" ${idx === ordered.length - 1 ? 'disabled' : ''}>▼</button>
+      ` : '';
+
+      return `
+        <div class="tour-item-card">
+          <div class="tour-item-top">
+            <div class="tour-item-title-wrap">
+              <span class="tour-item-index">${idx + 1}</span>
+              <strong>${entry.item.name}</strong>
+            </div>
+            <div class="tour-item-controls">
+              ${manualControls}
+              <button type="button" class="btn-mini-ctrl" data-remove-id="${entry.item.id}" title="Rimuovi">✕</button>
+            </div>
+          </div>
+          <div class="tour-item-badges">
+            <span class="badge ${badgeClass}">${entry.statusLabel}</span>
+            <span class="badge badge-type">Difficoltà: ${entry.difficultyLabel}</span>
+          </div>
+          <div class="tour-item-advice">💡 ${entry.advice}</div>
+        </div>
+      `;
+    }).join('');
+
+    this.dom.tourSelectedItems.querySelectorAll('[data-remove-id]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const id = btn.getAttribute('data-remove-id');
+        this.tourEditorState.itemIds = this.tourEditorState.itemIds.filter(x => x !== id);
+        this.renderTourCatalogPicker();
+        this.renderTourEditorSelectedItems();
+      });
+    });
+
+    this.dom.tourSelectedItems.querySelectorAll('[data-move-up]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const id = btn.getAttribute('data-move-up');
+        const i = this.tourEditorState.itemIds.indexOf(id);
+        if (i > 0) {
+          [this.tourEditorState.itemIds[i - 1], this.tourEditorState.itemIds[i]] =
+            [this.tourEditorState.itemIds[i], this.tourEditorState.itemIds[i - 1]];
+          this.renderTourEditorSelectedItems();
+        }
+      });
+    });
+
+    this.dom.tourSelectedItems.querySelectorAll('[data-move-down]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const id = btn.getAttribute('data-move-down');
+        const i = this.tourEditorState.itemIds.indexOf(id);
+        if (i !== -1 && i < this.tourEditorState.itemIds.length - 1) {
+          [this.tourEditorState.itemIds[i], this.tourEditorState.itemIds[i + 1]] =
+            [this.tourEditorState.itemIds[i + 1], this.tourEditorState.itemIds[i]];
+          this.renderTourEditorSelectedItems();
+        }
+      });
+    });
+  }
+
+  handleSaveTour() {
+    if (!window.tourPlannerManager) return;
+    if (this.tourEditorState.itemIds.length === 0) {
+      alert('Inserisci almeno un oggetto celeste prima di salvare il tour.');
+      return;
+    }
+
+    const defaultName = `Tour ${window.tourPlannerManager.formatDateLabel(this.tourEditorState.dateStr)}`;
+    const name = (this.tourEditorState.name || '').trim() || defaultName;
+
+    window.tourPlannerManager.saveTour({
+      id: this.tourEditorState.id,
+      name,
+      dateStr: this.tourEditorState.dateStr,
+      slotStartHour: this.tourEditorState.slotStartHour,
+      orderMode: this.tourEditorState.orderMode,
+      itemIds: this.tourEditorState.itemIds
+    });
+
+    this.switchTourSubview('list');
+    this.renderToursList();
+  }
+
+  startTourRunner(tourId) {
+    if (!window.tourPlannerManager) return;
+    const runner = window.tourPlannerManager.startRunner(tourId);
+    if (!runner || runner.items.length === 0) {
+      alert('Questo tour non contiene oggetti validi.');
+      return;
+    }
+    this.switchTourSubview('runner');
+    this.renderTourRunner();
+  }
+
+  renderTourRunner() {
+    const runner = window.tourPlannerManager?.activeRunner;
+    if (!runner) return;
+
+    if (this.dom.runnerTourTitle) {
+      this.dom.runnerTourTitle.textContent = runner.tourName;
+    }
+
+    // 1. Gate obbligatorio di allineamento
+    if (!runner.alignmentConfirmed) {
+      if (this.dom.toursAlignmentGate) this.dom.toursAlignmentGate.style.display = 'flex';
+      if (this.dom.toursRunnerStage) this.dom.toursRunnerStage.style.display = 'none';
+
+      if (this.dom.runnerCalibStatusBox && window.calibrationManager) {
+        if (window.calibrationManager.isCalibrated) {
+          this.dom.runnerCalibStatusBox.innerHTML =
+            `<span style="color: var(--lock-green); font-weight: 700;">✓ Telescopio già allineato su ${window.calibrationManager.calibratedStar?.name || 'stella di riferimento'}. Puoi iniziare il tour!</span>`;
+        } else {
+          this.dom.runnerCalibStatusBox.innerHTML =
+            `<span style="color: var(--warning-color); font-weight: 700;">⚠️ Telescopio NON ancora allineato. Consigliato eseguire l'allineamento su Stella Polare, Vega o Capella.</span>`;
+        }
+      }
+      return;
+    }
+
+    // 2. Stage guidato del tour
+    if (this.dom.toursAlignmentGate) this.dom.toursAlignmentGate.style.display = 'none';
+    if (this.dom.toursRunnerStage) this.dom.toursRunnerStage.style.display = 'flex';
+
+    const total = runner.items.length;
+    const idx = runner.currentIndex;
+    const entry = runner.items[idx];
+    const obj = entry.item;
+
+    if (this.dom.runnerStepCounter) {
+      this.dom.runnerStepCounter.textContent = `Tappa ${idx + 1} di ${total}`;
+    }
+    if (this.dom.runnerSlotBadge) {
+      this.dom.runnerSlotBadge.textContent = window.tourPlannerManager.formatSlotLabel(runner.slotStartHour, 3);
+    }
+    if (this.dom.runnerProgressFill) {
+      this.dom.runnerProgressFill.style.width = `${Math.round(((idx + 1) / total) * 100)}%`;
+    }
+    if (this.dom.runnerObjName) this.dom.runnerObjName.textContent = obj.name;
+    if (this.dom.runnerObjSub) {
+      this.dom.runnerObjSub.textContent = `${obj.designation} • ${obj.constellation} • Mag: ${typeof obj.mag === 'number' ? obj.mag.toFixed(1) : '-'}`;
+    }
+    if (this.dom.runnerObjStatusBadge) {
+      this.dom.runnerObjStatusBadge.textContent = entry.statusLabel;
+      this.dom.runnerObjStatusBadge.className = 'badge ' + (
+        entry.statusLevel === 'ok' ? 'badge-visible' : (entry.statusLevel === 'warn' ? 'badge-warn-slot' : 'badge-hidden')
+      );
+    }
+    if (this.dom.runnerObjAdvice) {
+      this.dom.runnerObjAdvice.textContent = entry.advice;
+    }
+
+    if (this.dom.btnRunnerPrev) {
+      this.dom.btnRunnerPrev.disabled = idx === 0;
+    }
+    if (this.dom.btnRunnerNext) {
+      this.dom.btnRunnerNext.textContent = idx === total - 1
+        ? '🏁 Completa Tour'
+        : '✓ Osservato / Prossimo ▶';
+    }
+
+    if (window.sensorManager) {
+      this.updateRunnerLiveTelemetry(window.sensorManager.rawOrientation);
+    }
+  }
+
+  updateRunnerLiveTelemetry(raw) {
+    const runner = window.tourPlannerManager?.activeRunner;
+    if (!runner || !runner.alignmentConfirmed) return;
+    const entry = runner.items[runner.currentIndex];
+    if (!entry || !window.celestialManager || !window.calibrationManager) return;
+
+    const coords = window.celestialManager.computeObjectCoordinates(entry.item, new Date());
+    const scope = window.calibrationManager.getCorrectedTelescopeOrientation(raw.alt, raw.az);
+    const guidance = window.calibrationManager.computePushToGuidance(scope, coords);
+    const fmt = CelestialManager.formatDMS;
+
+    if (this.dom.runnerObjAltAz) {
+      this.dom.runnerObjAltAz.textContent = `${fmt(coords.altitude, true)} / ${fmt(coords.azimuth)}`;
+    }
+    if (this.dom.runnerObjDist) {
+      this.dom.runnerObjDist.textContent = fmt(guidance.angularDistance);
+    }
+  }
+
+  advanceTourRunner(delta, fromHud = false) {
+    const runner = window.tourPlannerManager?.activeRunner;
+    if (!runner) return;
+
+    const nextIdx = runner.currentIndex + delta;
+    if (nextIdx < 0) return;
+
+    if (nextIdx >= runner.items.length) {
+      alert(`🎉 Tour "${runner.tourName}" completato! Hai osservato tutti gli ${runner.items.length} oggetti pianificati.`);
+      window.tourPlannerManager.stopRunner();
+      this.updateHudTourBanner();
+      this.switchTourSubview('list');
+      this.renderToursList();
+      if (fromHud) this.switchTab('tours');
+      return;
+    }
+
+    runner.currentIndex = nextIdx;
+    if (fromHud) {
+      this.setTarget(runner.items[nextIdx].item);
+      this.updateHudTourBanner();
+    } else {
+      this.renderTourRunner();
+    }
+  }
+
+  updateHudTourBanner() {
+    if (!this.dom.hudTourBanner) return;
+    const runner = window.tourPlannerManager?.activeRunner;
+
+    if (runner && runner.alignmentConfirmed) {
+      this.dom.hudTourBanner.style.display = 'flex';
+      if (this.dom.hudTourStepLabel) {
+        this.dom.hudTourStepLabel.textContent = `🗺️ Tappa ${runner.currentIndex + 1}/${runner.items.length}`;
+      }
+      if (this.dom.hudTourNameLabel) {
+        this.dom.hudTourNameLabel.textContent = runner.items[runner.currentIndex]?.item.name || runner.tourName;
+      }
+      if (this.dom.btnHudTourNext) {
+        this.dom.btnHudTourNext.textContent = runner.currentIndex === runner.items.length - 1
+          ? '🏁 Fine'
+          : 'Prossimo ▶';
+      }
+    } else {
+      this.dom.hudTourBanner.style.display = 'none';
     }
   }
 

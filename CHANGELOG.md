@@ -4,6 +4,15 @@ Tutte le modifiche rilevanti a **StarWay** sono documentate in questo file.
 
 Il formato è basato su [Keep a Changelog](https://keepachangelog.com/it/1.1.0/) e il progetto aderisce al [Semantic Versioning](https://semver.org/lang/it/).
 
+## [1.1.0] - 2026-11-15
+
+### Added
+- **Pianificatore di Tour Celesti (`js/tours.js`, tab `🗺️ Tour`)**:
+  - **Elenco Pianificazioni**: gestione completa delle sessioni salvate in `localStorage` con data, finestra oraria di 3 ore, conteggio oggetti e strategia di ordinamento.
+  - **Editor Sessioni & Analisi Visibilità**: selezione data futura, slot da 3 ore, aggiunta libera dal catalogo con calcolo in tempo reale di elevazione, orario di tramonto/sorgere, difficoltà di puntamento e consigli osservativi personalizzati.
+  - **Ottimizzazione Intelligente del Percorso**: flag per scegliere tra *Ordine Personalizzato* (riordinamento manuale `▲`/`▼`) e *Ottimizzazione Intelligente* (ordinamento cronologico dagli oggetti che tramontano/spariscono prima fino a quelli visibili più a lungo nella notte).
+  - **Esecuzione Guidata ("Inizia il Tour")**: schermata obbligatoria di promemoria allineamento telescopio prima di iniziare, sequenza tappa-per-tappa con telemetria live, consigli e integrazione diretta con il Mirino Push-To HUD (`#hud-tour-banner`).
+
 ## [1.0.0] - 2026-11-14
 
 ### Added

@@ -18,7 +18,7 @@
   <link rel="icon" type="image/png" href="assets/icons/icon-192.png">
 
   <!-- Fogli di stile -->
-  <link rel="stylesheet" href="css/style.css?v=1.4.0">
+  <link rel="stylesheet" href="css/style.css?v=1.5.0">
 </head>
 <body class="theme-night">
   <div id="app-root">
@@ -60,6 +60,18 @@
 
       <!-- ================= 1. TAB HUD / PUSH-TO VIEW ================= -->
       <section id="tab-hud" class="tab-view active">
+        <!-- Banner Tour Attivo (visibile solo durante un Tour Guidato) -->
+        <div id="hud-tour-banner" class="hud-tour-banner" style="display: none;">
+          <div class="hud-tour-banner-info">
+            <span id="hud-tour-step-label" class="hud-tour-step">🗺️ Tour: Tappa 1/1</span>
+            <span id="hud-tour-name-label" class="hud-tour-name">Sessione</span>
+          </div>
+          <div class="hud-tour-banner-actions">
+            <button type="button" id="btn-hud-tour-back" class="btn-subtle">Torna al Tour</button>
+            <button type="button" id="btn-hud-tour-next" class="btn-tour-next-mini">Prossimo ▶</button>
+          </div>
+        </div>
+
         <!-- Scheda Target Attuale -->
         <div class="target-card">
           <div class="target-card-top">
@@ -358,6 +370,184 @@
         </div>
       </section>
 
+      <!-- ================= 5. TAB PIANIFICATORE TOUR CELESTI ================= -->
+      <section id="tab-tours" class="tab-view">
+        <!-- VISTA A: ELENCO PIANIFICAZIONI SALVATE -->
+        <div id="tours-view-list" class="tours-subview active">
+          <div class="tours-header-bar">
+            <div class="section-title-wrap">
+              <h2>Pianificatore Tour Celesti</h2>
+              <p>Organizza sessioni osservative di 3 ore con consigli intelligenti e percorso ottimizzato.</p>
+            </div>
+            <button type="button" id="btn-new-tour" class="btn-primary-glow">
+              + Nuova Pianificazione
+            </button>
+          </div>
+
+          <div id="tours-list-container" class="tours-list-container">
+            <!-- Generato dinamicamente da JS -->
+          </div>
+        </div>
+
+        <!-- VISTA B: CREAZIONE / MODIFICA TOUR -->
+        <div id="tours-view-editor" class="tours-subview">
+          <div class="tours-editor-topbar">
+            <h2 id="tour-editor-title">Nuova Sessione di Osservazione</h2>
+            <button type="button" id="btn-cancel-tour-edit" class="btn-subtle">✕ Annulla</button>
+          </div>
+
+          <div class="settings-card">
+            <div class="form-group">
+              <label for="tour-input-name" class="form-label">Nome del Tour / Sessione:</label>
+              <input type="text" id="tour-input-name" class="form-input" placeholder="es. Meraviglie d'Autunno">
+            </div>
+
+            <div class="coords-manual-grid">
+              <div class="form-group">
+                <label for="tour-input-date" class="form-label">Data Osservazione:</label>
+                <input type="date" id="tour-input-date" class="form-input">
+              </div>
+              <div class="form-group">
+                <label for="tour-input-slot" class="form-label">Slot Orario (3 ore):</label>
+                <select id="tour-input-slot" class="form-select">
+                  <option value="18">18:00 – 21:00</option>
+                  <option value="19">19:00 – 22:00</option>
+                  <option value="20">20:00 – 23:00</option>
+                  <option value="21" selected>21:00 – 00:00</option>
+                  <option value="22">22:00 – 01:00</option>
+                  <option value="23">23:00 – 02:00</option>
+                  <option value="0">00:00 – 03:00</option>
+                  <option value="1">01:00 – 04:00</option>
+                  <option value="2">02:00 – 05:00</option>
+                  <option value="3">03:00 – 06:00</option>
+                </select>
+              </div>
+            </div>
+
+            <!-- Flag Modalità Ordine -->
+            <div class="form-group">
+              <label class="form-label">Strategia Ordine di Osservazione:</label>
+              <div class="tour-order-toggle">
+                <button type="button" class="order-mode-btn active" data-order-mode="smart">
+                  🧠 Ottimizzazione Intelligente
+                  <small>Prima chi tramonta presto, poi i più longevi</small>
+                </button>
+                <button type="button" class="order-mode-btn" data-order-mode="custom">
+                  ✋ Ordine Personalizzato
+                  <small>Mantieni la tua sequenza manuale</small>
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Aggiunta libera oggetti dal catalogo -->
+          <div class="settings-card">
+            <h3>🌌 Aggiungi Oggetti Celesti al Tour</h3>
+            <div class="search-input-wrap">
+              <span class="search-icon">🔍</span>
+              <input type="text" id="tour-catalog-search" placeholder="Cerca pianeti, stelle, M42, NGC...">
+            </div>
+            <div id="tour-catalog-picker" class="tour-catalog-picker">
+              <!-- Risultati ricerca / suggeriti -->
+            </div>
+          </div>
+
+          <!-- Elenco oggetti selezionati con consigli live -->
+          <div class="settings-card">
+            <div class="tour-selected-header">
+              <h3>📋 Sequenza del Tour (<span id="tour-selected-count">0</span>)</h3>
+              <span id="tour-order-badge" class="badge badge-visible">Ordine Smart</span>
+            </div>
+            <div id="tour-selected-items" class="tour-selected-items">
+              <!-- Oggetti selezionati + note di supporto -->
+            </div>
+          </div>
+
+          <div class="tour-editor-footer">
+            <button type="button" id="btn-save-tour" class="btn-primary-large btn-block">
+              💾 SALVA PIANIFICAZIONE
+            </button>
+          </div>
+        </div>
+
+        <!-- VISTA C: ESECUZIONE GUIDATA ("INIZIA IL TOUR") -->
+        <div id="tours-view-runner" class="tours-subview">
+          <div class="tours-editor-topbar">
+            <h2 id="runner-tour-title">Tour Guidato</h2>
+            <button type="button" id="btn-exit-tour-runner" class="btn-subtle">⏹ Termina</button>
+          </div>
+
+          <!-- Promemoria Obbligatorio di Allineamento -->
+          <div id="tours-alignment-gate" class="tour-alignment-gate">
+            <div class="alignment-gate-icon">⭐</div>
+            <h3>Allineamento Telescopio Obbligatorio</h3>
+            <p class="alignment-gate-desc">
+              Prima di iniziare la sequenza guidata del tour, assicurati di aver eseguito l'allineamento ad 1 stella (es. su <strong>Stella Polare</strong>, <strong>Vega</strong>, <strong>Capella</strong> o <strong>Sirio</strong>) per garantire la precisione del Push-To.
+            </p>
+            <div id="runner-calib-status-box" class="runner-calib-status-box">
+              <!-- Stato calibrazione attuale -->
+            </div>
+            <div class="alignment-gate-actions">
+              <button type="button" id="btn-runner-go-calib" class="btn-action">
+                ⭐ Vai ad Allineare Adesso
+              </button>
+              <button type="button" id="btn-runner-confirm-align" class="btn-primary-large">
+                ✓ Allineamento Eseguito — Inizia Tour
+              </button>
+            </div>
+          </div>
+
+          <!-- Stage Guidato degli Oggetti -->
+          <div id="tours-runner-stage" class="tours-runner-stage" style="display: none;">
+            <div class="runner-progress-card">
+              <div class="runner-progress-top">
+                <strong id="runner-step-counter">Tappa 1 di 5</strong>
+                <span id="runner-slot-badge" class="badge badge-type">21:00 - 00:00</span>
+              </div>
+              <div class="runner-progress-bar-bg">
+                <div id="runner-progress-fill" class="runner-progress-fill" style="width: 20%;"></div>
+              </div>
+            </div>
+
+            <div class="runner-object-card">
+              <div class="runner-object-header">
+                <div>
+                  <h3 id="runner-obj-name">M42 - Nebulosa di Orione</h3>
+                  <div id="runner-obj-sub" class="target-sub">Messier 42 • Orione • Mag: 4.0</div>
+                </div>
+                <span id="runner-obj-status-badge" class="badge badge-visible">Visibile</span>
+              </div>
+
+              <!-- Dati di puntamento in tempo reale -->
+              <div class="runner-telemetry-grid">
+                <div class="delta-box">
+                  <span class="delta-label">ALT / AZ TARGET</span>
+                  <span id="runner-obj-altaz" class="delta-value-sub">+45° 00' / 180° 00'</span>
+                </div>
+                <div class="delta-box">
+                  <span class="delta-label">DISTANZA ATTUALE</span>
+                  <span id="runner-obj-dist" class="delta-value-sub">00° 00'</span>
+                </div>
+              </div>
+
+              <div class="runner-advice-box">
+                <div class="runner-advice-title">💡 Supporto & Consigli Osservativi</div>
+                <p id="runner-obj-advice">--</p>
+              </div>
+
+              <button type="button" id="btn-runner-open-hud" class="btn-primary-large btn-block">
+                🔭 PUNTA CON MIRINO HUD
+              </button>
+            </div>
+
+            <div class="runner-nav-controls">
+              <button type="button" id="btn-runner-prev" class="btn-action">◀ Precedente</button>
+              <button type="button" id="btn-runner-next" class="btn-action btn-runner-next-primary">✓ Osservato / Prossimo ▶</button>
+            </div>
+          </div>
+        </div>
+      </section>
+
     </main>
 
     <!-- BOTTOM TAB NAVIGATION BAR -->
@@ -370,6 +560,11 @@
       <button class="nav-btn" data-tab="catalog">
         <span class="nav-icon">🌌</span>
         <span class="nav-text">Catalogo</span>
+      </button>
+
+      <button class="nav-btn" data-tab="tours">
+        <span class="nav-icon">🗺️</span>
+        <span class="nav-text">Tour</span>
       </button>
 
       <button class="nav-btn" data-tab="calibration">
@@ -386,14 +581,15 @@
   </div>
 
   <!-- SCRIPTS MODULARI (Ordine di caricamento) -->
-  <script src="js/astronomy.browser.min.js?v=1.4.0"></script>
-  <script src="js/storage.js?v=1.4.0"></script>
-  <script src="js/catalog.js?v=1.4.0"></script>
-  <script src="js/sensors.js?v=1.4.0"></script>
-  <script src="js/calibration.js?v=1.4.0"></script>
-  <script src="js/audio.js?v=1.4.0"></script>
-  <script src="js/render-reticle.js?v=1.4.0"></script>
-  <script src="js/render-skymap.js?v=1.4.0"></script>
-  <script src="js/app.js?v=1.4.0"></script>
+  <script src="js/astronomy.browser.min.js?v=1.5.0"></script>
+  <script src="js/storage.js?v=1.5.0"></script>
+  <script src="js/catalog.js?v=1.5.0"></script>
+  <script src="js/sensors.js?v=1.5.0"></script>
+  <script src="js/calibration.js?v=1.5.0"></script>
+  <script src="js/audio.js?v=1.5.0"></script>
+  <script src="js/render-reticle.js?v=1.5.0"></script>
+  <script src="js/render-skymap.js?v=1.5.0"></script>
+  <script src="js/tours.js?v=1.5.0"></script>
+  <script src="js/app.js?v=1.5.0"></script>
 </body>
 </html>

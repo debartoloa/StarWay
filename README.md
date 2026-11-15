@@ -45,6 +45,12 @@ Adatta automaticamente le matrici di orientamento 3D al supporto fisico usato su
 - **Modalità Giorno**: Tema ambra/slate ad alto contrasto per osservazioni solari o test diurni.
 - **Indicatore Schermo Sempre Attivo (`💡 Sempre Attivo`)**: Conferma visiva nella barra superiore che il blocco spegnimento display è attivo.
 
+### 6. Pianificatore di Tour Celesti (Sessioni di Osservazione Pianificate)
+- **Elenco Sessioni**: Gestisci e avvia tour osservativi salvati con data, finestra di **3 ore** e numero di oggetti.
+- **Editor con Consigli Intelligenti**: Scegli qualsiasi data futura e slot orario; per ogni oggetto aggiunto dal catalogo vengono calcolati visibilità nello slot, altezza massima, orario di tramonto/sorgere, difficoltà e suggerimenti per l'oculare.
+- **Ordine Personalizzato o Ottimizzazione Smart**: Commuta tra sequenza manuale e ordinamento cronologico automatico (prima gli oggetti che tramontano/spariscono prima, poi quelli visibili più a lungo nella notte).
+- **Esecuzione Guidata ("Inizia il Tour")**: Include un promemoria obbligatorio di allineamento telescopio prima della partenza e guida tappa per tappa con collegamento diretto al Mirino Push-To HUD.
+
 ---
 
 ## 📁 Struttura del Progetto
@@ -68,6 +74,7 @@ Adatta automaticamente le matrici di orientamento 3D al supporto fisico usato su
 │   ├── audio.js            # Feedback sonoro sonar (Web Audio API) e aptico
 │   ├── render-reticle.js   # Renderer Canvas del mirino radar Push-To
 │   ├── render-skymap.js    # Renderer Canvas mini-mappa celeste & Newtonian Mode
+│   ├── tours.js            # Pianificatore Tour Celesti, analisi visibilità & runner
 │   └── app.js              # Controller principale UI, loop HUD e Wake Lock
 ├── assets/
 │   ├── icons/              # Icone PWA (192x192, 512x512)
