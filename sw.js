@@ -3,7 +3,7 @@
  * Strategia Cache-First per garantire funzionamento 100% offline nei campi di osservazione bui
  */
 
-const CACHE_NAME = 'starway-v1.5.2';
+const CACHE_NAME = 'starway-v1.5.3';
 
 const ASSETS_TO_CACHE = [
   './',
